@@ -73,47 +73,48 @@ onMounted(loadJobs)
       :loading="loading"
       striped-rows
       row-hover
+      scrollable
       class="jobs-table"
     >
-      <Column field="id" header="ID" style="width: 60px" />
-      <Column field="name" header="Name" />
-      <Column field="niche" header="Niche" style="width: 140px" />
-      <Column field="status" header="Status" style="width: 120px">
-        <template #body="{ data }">
-          <Tag :value="data.status" :severity="statusSeverity(data.status)" />
-        </template>
-      </Column>
-      <Column field="transcriptStatus" header="Transcript" style="width: 120px">
-        <template #body="{ data }">
-          <Tag :value="data.transcriptStatus" :severity="statusSeverity(data.transcriptStatus)" />
-        </template>
-      </Column>
-      <Column field="chunksStatus" header="Chunks" style="width: 110px">
-        <template #body="{ data }">
-          <Tag :value="data.chunksStatus" :severity="statusSeverity(data.chunksStatus)" />
-        </template>
-      </Column>
-      <Column field="imagesStatus" header="Images" style="width: 110px">
-        <template #body="{ data }">
-          <Tag :value="data.imagesStatus" :severity="statusSeverity(data.imagesStatus)" />
-        </template>
-      </Column>
-      <Column field="audioStatus" header="Audio" style="width: 110px">
-        <template #body="{ data }">
-          <Tag :value="data.audioStatus" :severity="statusSeverity(data.audioStatus)" />
-        </template>
-      </Column>
-      <Column field="videoStatus" header="Video" style="width: 110px">
-        <template #body="{ data }">
-          <Tag :value="data.videoStatus" :severity="statusSeverity(data.videoStatus)" />
-        </template>
-      </Column>
-      <Column field="channelId" header="Channel" style="width: 90px">
+      <Column field="id" header="ID" style="width: 60px; min-width: 60px" />
+      <Column field="name" header="Name" style="min-width: 220px" />
+      <Column field="channelId" header="Channel" style="width: 100px; min-width: 100px">
         <template #body="{ data }">
           <span class="channel-cell">{{ data.channelId ?? '—' }}</span>
         </template>
       </Column>
-      <Column field="createdAt" header="Created" style="width: 130px">
+      <Column field="niche" header="Niche" style="width: 140px; min-width: 140px" />
+      <Column field="status" header="Status" style="width: 120px; min-width: 120px">
+        <template #body="{ data }">
+          <Tag :value="data.status" :severity="statusSeverity(data.status)" />
+        </template>
+      </Column>
+      <Column field="transcriptStatus" header="Transcript" style="width: 120px; min-width: 120px">
+        <template #body="{ data }">
+          <Tag :value="data.transcriptStatus" :severity="statusSeverity(data.transcriptStatus)" />
+        </template>
+      </Column>
+      <Column field="chunksStatus" header="Chunks" style="width: 110px; min-width: 110px">
+        <template #body="{ data }">
+          <Tag :value="data.chunksStatus" :severity="statusSeverity(data.chunksStatus)" />
+        </template>
+      </Column>
+      <Column field="imagesStatus" header="Images" style="width: 110px; min-width: 110px">
+        <template #body="{ data }">
+          <Tag :value="data.imagesStatus" :severity="statusSeverity(data.imagesStatus)" />
+        </template>
+      </Column>
+      <Column field="audioStatus" header="Audio" style="width: 110px; min-width: 110px">
+        <template #body="{ data }">
+          <Tag :value="data.audioStatus" :severity="statusSeverity(data.audioStatus)" />
+        </template>
+      </Column>
+      <Column field="videoStatus" header="Video" style="width: 110px; min-width: 110px">
+        <template #body="{ data }">
+          <Tag :value="data.videoStatus" :severity="statusSeverity(data.videoStatus)" />
+        </template>
+      </Column>
+      <Column field="createdAt" header="Created" style="width: 130px; min-width: 130px">
         <template #body="{ data }">
           {{ new Date(data.createdAt).toLocaleDateString() }}
         </template>
