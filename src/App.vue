@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import Toast from 'primevue/toast'
 
 const route = useRoute()
 
@@ -10,6 +11,7 @@ const navItems = [
 </script>
 
 <template>
+  <Toast />
   <div class="layout">
     <aside class="sidebar">
       <div class="sidebar-brand">F</div>

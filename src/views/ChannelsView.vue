@@ -6,6 +6,7 @@ import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
+import api from '@/api'
 
 interface Channel {
   id: number
@@ -43,16 +44,12 @@ async function submitCreate() {
   creating.value = true
   createError.value = null
   try {
-    const res = await fetch('/api/channels', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(createForm.value),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    await api.post('/channels', createForm.value)
     createOpen.value = false
     await loadChannels()
-  } catch (e) {
-    createError.value = e instanceof Error ? e.message : 'Failed to create channel'
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    createError.value = typeof msg === 'string' ? msg : 'Failed to create channel'
   } finally {
     creating.value = false
   }
@@ -87,18 +84,13 @@ async function submitUpdate() {
   editError.value = null
   try {
     const { id, profileImagePath, bannerImagePath, ...body } = editForm.value
-    const res = await fetch(`/api/channels/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const updated: Channel = await res.json()
+    const { data: updated } = await api.patch<Channel>(`/channels/${id}`, body)
     const idx = channels.value.findIndex((c) => c.id === id)
     if (idx !== -1) channels.value[idx] = updated
     editOpen.value = false
-  } catch (e) {
-    editError.value = e instanceof Error ? e.message : 'Failed to save changes'
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    editError.value = typeof msg === 'string' ? msg : 'Failed to save changes'
   } finally {
     saving.value = false
   }
@@ -108,15 +100,14 @@ async function generate(action: 'generate-keywords' | 'generate-description' | '
   generating.value = action
   editError.value = null
   try {
-    const res = await fetch(`/api/channels/${editForm.value.id}/${action}`, { method: 'POST' })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const updated: Channel = await res.json()
+    const { data: updated } = await api.post<Channel>(`/channels/${editForm.value.id}/${action}`)
     editForm.value = { ...updated }
     imageCacheBust.value = Date.now()
     const idx = channels.value.findIndex((c) => c.id === updated.id)
     if (idx !== -1) channels.value[idx] = updated
-  } catch (e) {
-    editError.value = e instanceof Error ? e.message : `Failed to ${action}`
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    editError.value = typeof msg === 'string' ? msg : `Failed to ${action}`
   } finally {
     generating.value = null
   }
@@ -127,11 +118,11 @@ async function loadChannels() {
   loading.value = true
   error.value = null
   try {
-    const res = await fetch('/api/channels')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    channels.value = await res.json()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load channels'
+    const { data } = await api.get<Channel[]>('/channels')
+    channels.value = data
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    error.value = typeof msg === 'string' ? msg : 'Failed to load channels'
   } finally {
     loading.value = false
   }
