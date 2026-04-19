@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -32,6 +33,7 @@ interface Job {
 }
 
 const toast = useToast()
+const router = useRouter()
 
 const jobs = ref<Job[]>([])
 const loading = ref(true)
@@ -135,6 +137,7 @@ onMounted(loadJobs)
       row-hover
       scrollable
       class="jobs-table"
+      @row-click="router.push({ name: 'job', params: { id: $event.data.id } })"
     >
       <Column field="id" header="ID" style="width: 60px; min-width: 60px" />
       <Column field="name" header="Name" style="min-width: 220px" />
@@ -248,7 +251,7 @@ onMounted(loadJobs)
 }
 
 :deep(.jobs-table .p-datatable-tbody > tr) {
-  cursor: default;
+  cursor: pointer;
 }
 
 .form {
