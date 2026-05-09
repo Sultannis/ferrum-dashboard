@@ -8,6 +8,7 @@ import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
 import api from '@/api'
 
@@ -43,10 +44,10 @@ const error = ref<string | null>(null)
 const channels = ref<Channel[]>([])
 const createOpen = ref(false)
 const creating = ref(false)
-const createForm = ref<{ name: string; niche: string; channelId: number | null }>({ name: '', niche: '', channelId: null })
+const createForm = ref<{ name: string; niche: string; channelId: number | null; addSubtitles: boolean }>({ name: '', niche: '', channelId: null, addSubtitles: true })
 
 async function openCreate() {
-  createForm.value = { name: '', niche: '', channelId: null }
+  createForm.value = { name: '', niche: '', channelId: null, addSubtitles: true }
   createOpen.value = true
   if (channels.value.length === 0) {
     try {
@@ -65,7 +66,7 @@ async function submitCreate() {
   }
   creating.value = true
   try {
-    const body: Record<string, unknown> = { name: createForm.value.name.trim() }
+    const body: Record<string, unknown> = { name: createForm.value.name.trim(), addSubtitles: createForm.value.addSubtitles }
     if (createForm.value.niche.trim()) body.niche = createForm.value.niche.trim()
     if (createForm.value.channelId !== null) body.channelId = createForm.value.channelId
     await api.post('/jobs', body)
@@ -212,6 +213,10 @@ onMounted(loadJobs)
             fluid
           />
         </div>
+        <div class="field field-inline">
+          <label>Add Subtitles</label>
+          <ToggleSwitch v-model="createForm.addSubtitles" />
+        </div>
         <div class="form-actions">
           <Button label="Cancel" severity="secondary" text @click="createOpen = false" />
           <Button label="Create" icon="pi pi-check" :loading="creating" @click="submitCreate" />
@@ -265,6 +270,12 @@ onMounted(loadJobs)
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.field-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .field label {

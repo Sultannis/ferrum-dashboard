@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
+import TranscriptEditor from '@/components/TranscriptEditor.vue'
+import JobDetailsEditor from '@/components/JobDetailsEditor.vue'
+import ChunksPanel from '@/components/ChunksPanel.vue'
+import PipelinePanel from '@/components/PipelinePanel.vue'
+import AudioPanel from '@/components/AudioPanel.vue'
+import YoutubePanel from '@/components/YoutubePanel.vue'
+import ThumbnailPanel from '@/components/ThumbnailPanel.vue'
+import type { Chunk } from '@/components/ChunksPanel.vue'
 import api from '@/api'
-
-interface Chunk {
-  id: number
-  orderingIndex: number
-  text: string | null
-  durationSeconds: number | null
-}
 
 interface Job {
   id: number
@@ -26,10 +26,17 @@ interface Job {
   subtitlesStatus: string
   videoStatus: string
   addSubtitles: boolean
+  srtFilePath: string | null
   descriptionForLlm: string | null
   transcript: string | null
   ttsTranscript: string | null
   audioPath: string | null
+  youtubeTitles: { id: number; title: string }[]
+  youtubeDescription: string | null
+  youtubeTags: string | null
+  thumbnailImagePrompt: string | null
+  thumbnailImagePath: string | null
+  thumbnailStatus: string
   channelId: number | null
   channel: { id: number; name: string } | null
   createdAt: string
@@ -43,22 +50,29 @@ const job = ref<Job | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-function statusSeverity(status: string): 'success' | 'warn' | 'danger' | 'secondary' | 'info' {
-  switch (status) {
-    case 'done':
-    case 'completed':
-      return 'success'
-    case 'pending':
-      return 'secondary'
-    case 'in_progress':
-    case 'processing':
-      return 'info'
-    case 'failed':
-    case 'error':
-      return 'danger'
-    default:
-      return 'warn'
-  }
+const BASE = import.meta.env.VITE_BASE_API_URL as string
+const finalVideoUrl = computed(() => job.value ? `${BASE}/jobs/${job.value.id}/final-video` : '')
+const srtUrl = computed(() => job.value ? `${BASE}/jobs/${job.value.id}/subtitles-file` : '')
+const videoReady = computed(() => {
+  const s = job.value?.videoStatus ?? ''
+  return s === 'done' || s === 'completed'
+})
+
+function onTranscriptSaved(payload: { ttsTranscript: string | null; transcript: string | null }) {
+  if (!job.value) return
+  job.value.ttsTranscript = payload.ttsTranscript
+  job.value.transcript = payload.transcript
+}
+
+function onDetailsSaved(payload: {
+  niche: string
+  channelId: number | null
+  channel: { id: number; name: string } | null
+  addSubtitles: boolean
+  descriptionForLlm: string | null
+}) {
+  if (!job.value) return
+  Object.assign(job.value, payload)
 }
 
 async function loadJob() {
@@ -88,93 +102,93 @@ onMounted(loadJob)
     <p v-if="error" class="fetch-error">{{ error }}</p>
 
     <template v-if="!loading && job">
-      <!-- Status grid -->
-      <section class="card">
-        <h2 class="section-title">Pipeline status</h2>
-        <div class="status-grid">
-          <div class="status-item">
-            <span class="status-label">Overall</span>
-            <Tag :value="job.status" :severity="statusSeverity(job.status)" />
-          </div>
-          <div class="status-item">
-            <span class="status-label">Transcript</span>
-            <Tag :value="job.transcriptStatus" :severity="statusSeverity(job.transcriptStatus)" />
-          </div>
-          <div class="status-item">
-            <span class="status-label">Chunks</span>
-            <Tag :value="job.chunksStatus" :severity="statusSeverity(job.chunksStatus)" />
-          </div>
-          <div class="status-item">
-            <span class="status-label">Image prompts</span>
-            <Tag :value="job.imagePromptsStatus" :severity="statusSeverity(job.imagePromptsStatus)" />
-          </div>
-          <div class="status-item">
-            <span class="status-label">Images</span>
-            <Tag :value="job.imagesStatus" :severity="statusSeverity(job.imagesStatus)" />
-          </div>
-          <div class="status-item">
-            <span class="status-label">Audio</span>
-            <Tag :value="job.audioStatus" :severity="statusSeverity(job.audioStatus)" />
-          </div>
-          <div class="status-item">
-            <span class="status-label">Audio breakdown</span>
-            <Tag :value="job.audioBreakdownStatus" :severity="statusSeverity(job.audioBreakdownStatus)" />
-          </div>
-          <div class="status-item">
-            <span class="status-label">Subtitles</span>
-            <Tag :value="job.subtitlesStatus" :severity="statusSeverity(job.subtitlesStatus)" />
-          </div>
-          <div class="status-item">
-            <span class="status-label">Video</span>
-            <Tag :value="job.videoStatus" :severity="statusSeverity(job.videoStatus)" />
-          </div>
+      <!-- Pipeline control -->
+      <PipelinePanel
+        :job-id="job.id"
+        :job-status="{
+          status: job.status,
+          transcriptStatus: job.transcriptStatus,
+          chunksStatus: job.chunksStatus,
+          imagePromptsStatus: job.imagePromptsStatus,
+          imagesStatus: job.imagesStatus,
+          audioStatus: job.audioStatus,
+          audioBreakdownStatus: job.audioBreakdownStatus,
+          subtitlesStatus: job.subtitlesStatus,
+          videoStatus: job.videoStatus,
+          addSubtitles: job.addSubtitles,
+          srtStatus: job.srtFilePath ? 'completed' : 'pending',
+        }"
+        @refresh="loadJob"
+      />
+
+      <!-- Final video -->
+      <section v-if="videoReady" class="card">
+        <h2 class="section-title">Final video</h2>
+        <video :src="finalVideoUrl" controls class="final-video" />
+        <div class="video-actions">
+          <a :href="finalVideoUrl" download class="download-link">
+            <Button label="Download" icon="pi pi-download" size="small" severity="secondary" />
+          </a>
+        </div>
+      </section>
+
+      <!-- Subtitles file -->
+      <section v-if="job.srtFilePath" class="card">
+        <h2 class="section-title">Subtitles file</h2>
+        <div class="video-actions">
+          <a :href="srtUrl" download="subtitles.srt" class="download-link">
+            <Button label="Download SRT" icon="pi pi-download" size="small" severity="secondary" />
+          </a>
         </div>
       </section>
 
       <!-- Details -->
-      <section class="card">
-        <h2 class="section-title">Details</h2>
-        <div class="details-grid">
-          <div class="detail-row">
-            <span class="detail-label">Niche</span>
-            <span class="detail-value">{{ job.niche }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Channel</span>
-            <span class="detail-value">{{ job.channel?.name ?? '—' }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Add subtitles</span>
-            <span class="detail-value">{{ job.addSubtitles ? 'Yes' : 'No' }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Created</span>
-            <span class="detail-value">{{ new Date(job.createdAt).toLocaleString() }}</span>
-          </div>
-          <div v-if="job.descriptionForLlm" class="detail-row detail-row--block">
-            <span class="detail-label">Description for LLM</span>
-            <span class="detail-value detail-value--pre">{{ job.descriptionForLlm }}</span>
-          </div>
-        </div>
-      </section>
+      <JobDetailsEditor
+        :job-id="job.id"
+        :niche="job.niche"
+        :channel-id="job.channelId"
+        :add-subtitles="job.addSubtitles"
+        :description-for-llm="job.descriptionForLlm"
+        :created-at="job.createdAt"
+        @saved="onDetailsSaved"
+      />
 
-      <!-- Transcript -->
-      <section v-if="job.transcript" class="card">
-        <h2 class="section-title">Transcript</h2>
-        <p class="text-block">{{ job.transcript }}</p>
-      </section>
+      <!-- Transcript editor -->
+      <TranscriptEditor
+        :job-id="job.id"
+        :tts-transcript="job.ttsTranscript"
+        @saved="onTranscriptSaved"
+      />
+
+      <!-- Audio -->
+      <AudioPanel
+        :job-id="job.id"
+        :audio-status="job.audioStatus"
+        :audio-breakdown-status="job.audioBreakdownStatus"
+        :has-audio="!!job.audioPath"
+        @refresh="loadJob"
+      />
+
+      <!-- YouTube -->
+      <YoutubePanel
+        :job-id="job.id"
+        :youtube-titles="job.youtubeTitles"
+        :youtube-description="job.youtubeDescription"
+        :youtube-tags="job.youtubeTags"
+        @refresh="loadJob"
+      />
+
+      <!-- Thumbnail -->
+      <ThumbnailPanel
+        :job-id="job.id"
+        :thumbnail-image-prompt="job.thumbnailImagePrompt"
+        :thumbnail-image-path="job.thumbnailImagePath"
+        :thumbnail-status="job.thumbnailStatus"
+        @refresh="loadJob"
+      />
 
       <!-- Chunks -->
-      <section v-if="job.chunks?.length" class="card">
-        <h2 class="section-title">Chunks ({{ job.chunks.length }})</h2>
-        <div class="chunks-list">
-          <div v-for="chunk in job.chunks" :key="chunk.id" class="chunk-item">
-            <span class="chunk-index">#{{ chunk.orderingIndex + 1 }}</span>
-            <p class="chunk-text">{{ chunk.text }}</p>
-            <span v-if="chunk.durationSeconds != null" class="chunk-duration">{{ chunk.durationSeconds }}s</span>
-          </div>
-        </div>
-      </section>
+      <ChunksPanel :chunks="job.chunks" :job-id="job.id" @chunks-generated="job.chunks = $event" />
     </template>
   </div>
 </template>
@@ -221,102 +235,17 @@ onMounted(loadJob)
   margin: 0;
 }
 
-.status-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.status-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.status-label {
-  font-size: 0.78rem;
-  color: #888;
-}
-
-.details-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.detail-row {
-  display: flex;
-  gap: 1rem;
-  align-items: baseline;
-}
-
-.detail-row--block {
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.detail-label {
-  font-size: 0.82rem;
-  color: #888;
-  min-width: 140px;
-  flex-shrink: 0;
-}
-
-.detail-value {
-  font-size: 0.9rem;
-  color: #ddd;
-}
-
-.detail-value--pre {
-  white-space: pre-wrap;
-  font-size: 0.85rem;
-  line-height: 1.6;
-  color: #ccc;
-}
-
-.text-block {
-  font-size: 0.88rem;
-  line-height: 1.7;
-  color: #ccc;
-  white-space: pre-wrap;
-  margin: 0;
-}
-
-.chunks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.chunk-item {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  padding: 0.6rem 0.75rem;
-  background: #1c1c1c;
+.final-video {
+  width: 100%;
   border-radius: 6px;
+  background: #000;
 }
 
-.chunk-index {
-  font-size: 0.75rem;
-  color: #555;
-  min-width: 28px;
-  padding-top: 0.1rem;
-  flex-shrink: 0;
+.video-actions {
+  display: flex;
 }
 
-.chunk-text {
-  flex: 1;
-  font-size: 0.85rem;
-  color: #ccc;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.chunk-duration {
-  font-size: 0.75rem;
-  color: #666;
-  flex-shrink: 0;
-  padding-top: 0.1rem;
+.download-link {
+  text-decoration: none;
 }
 </style>

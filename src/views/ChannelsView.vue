@@ -17,6 +17,9 @@ interface Channel {
   keywords: string | null
   profileImagePath: string | null
   bannerImagePath: string | null
+  outroImagePath: string | null
+  outroVideoPath: string | null
+  outroStatus: string
   createdAt: string
 }
 
@@ -66,6 +69,9 @@ const editForm = ref<Omit<Channel, 'createdAt'>>({
   keywords: null,
   profileImagePath: null,
   bannerImagePath: null,
+  outroImagePath: null,
+  outroVideoPath: null,
+  outroStatus: 'pending',
 })
 const saving = ref(false)
 const editError = ref<string | null>(null)
@@ -96,7 +102,7 @@ async function submitUpdate() {
   }
 }
 
-async function generate(action: 'generate-keywords' | 'generate-description' | 'generate-profile-image' | 'generate-banner') {
+async function generate(action: 'generate-keywords' | 'generate-description' | 'generate-profile-image' | 'generate-banner' | 'generate-outro') {
   generating.value = action
   editError.value = null
   try {
@@ -300,6 +306,35 @@ onMounted(loadChannels)
               </div>
             </div>
           </div>
+
+          <div class="asset-block asset-block--outro">
+            <div class="field-label-row">
+              <span class="assets-label">
+                Outro video
+                <span v-if="editForm.outroStatus !== 'pending'" class="outro-status" :class="`outro-status--${editForm.outroStatus}`">
+                  {{ editForm.outroStatus }}
+                </span>
+              </span>
+              <Button
+                label="Generate"
+                icon="pi pi-sparkles"
+                size="small"
+                text
+                :loading="generating === 'generate-outro'"
+                :disabled="!!generating"
+                @click.prevent="generate('generate-outro')"
+              />
+            </div>
+            <div class="asset-preview outro-preview">
+              <video
+                v-if="editForm.outroVideoPath"
+                :src="`/api/channels/${editForm.id}/outro-video?t=${imageCacheBust}`"
+                controls
+                class="outro-video"
+              />
+              <span v-else class="asset-empty">Not generated</span>
+            </div>
+          </div>
         </div>
 
         <p v-if="editError" class="form-error">{{ editError }}</p>
@@ -449,6 +484,34 @@ onMounted(loadChannels)
   font-size: 0.78rem;
   color: var(--p-surface-400);
 }
+
+.asset-block--outro {
+  width: 100%;
+}
+
+.outro-preview {
+  height: 120px;
+}
+
+.outro-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  border-radius: 4px;
+}
+
+.outro-status {
+  font-size: 0.72rem;
+  font-weight: 500;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.outro-status--completed { background: rgba(34,197,94,0.15); color: #4ade80; }
+.outro-status--in_progress { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.outro-status--failed { background: rgba(239,68,68,0.15); color: #f87171; }
 
 .required {
   color: #f87171;
